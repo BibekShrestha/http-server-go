@@ -132,6 +132,7 @@ func prepareResponse(cxt context.Context, http_request httpRequest, http_respons
 		}
 
 	}
+	compressionMiddleWare(cxt, http_request, http_response)
 
 }
 func send_response(conn net.Conn, response httpResponse) error {
@@ -152,4 +153,22 @@ func send_response(conn net.Conn, response httpResponse) error {
 		return err
 	}
 	return nil
+}
+
+func compressionMiddleWare(cxt context.Context, http_request httpRequest, http_response *httpResponse) {
+
+	if _, ok := http_request.Headers["accept-encoding"]; !ok {
+		return
+	}
+	var compression string = http_request.Headers["accept-encoding"]
+	switch compression {
+	case "gzip":
+		{
+			http_response.Headers["Content-Encoding"] = "gzip"
+		}
+	default:
+		{
+			return
+		}
+	}
 }
