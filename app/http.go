@@ -68,10 +68,13 @@ func parse_request(conn net.Conn, request *httpRequest) error {
 		if err != nil {
 			fmt.Println("Error when reading request;", err)
 		}
-		request_bytes = append(request_bytes, temp_buff...)
 		if n < BUF_SIZE {
+			temp_buff = temp_buff[:n]
+			request_bytes = append(request_bytes, temp_buff...)
 			break
 		}
+		request_bytes = append(request_bytes, temp_buff...)
+
 	}
 	fmt.Println("Received ", len(request_bytes), "Bytes")
 
@@ -81,6 +84,8 @@ func parse_request(conn net.Conn, request *httpRequest) error {
 	splitted_status_line := strings.Split(status_line, " ")
 	request.Method, request.Path, request.Version = splitted_status_line[0], splitted_status_line[1], splitted_status_line[2]
 	request.Body = splitted_request[len(splitted_request)-1]
+	request.Body = strings.TrimSpace(request.Body)
+
 	http_headers := splitted_request[1 : len(splitted_request)-2]
 	http_headers_map := make(map[string]string)
 
@@ -113,10 +118,13 @@ func prepareResponse(cxt context.Context, http_request httpRequest, http_respons
 		{
 			prepareUserAgentEndpointResponse(cxt, http_request, http_response)
 		}
-	case strings.HasPrefix(http_request.Path, "/files/"):
+	case strings.HasPrefix(http_request.Path, "/files/") && strings.ToLower(http_request.Method) == "get":
 		{
-			fmt.Println("file request")
-			prepareFileResponse(cxt, http_request, http_response)
+			prepareGetFileResponse(cxt, http_request, http_response)
+		}
+	case strings.HasPrefix(http_request.Path, "/files/") && strings.ToLower(http_request.Method) == "post":
+		{
+			preparePostFileResponse(cxt, http_request, http_response)
 		}
 	default:
 		{
