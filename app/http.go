@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"net"
@@ -170,7 +172,18 @@ func compressionMiddleWare(cxt context.Context, http_request httpRequest, http_r
 	switch {
 	case slices.Contains(accepted_compression, "gzip"):
 		{
+
+			w := bytes.NewBufferString("")
+			writer := gzip.NewWriter(w)
+			if _, err := writer.Write([]byte(http_response.Body)); err != nil {
+				fmt.Printf("Error when performing compression -> %+v\n", err)
+				fmt.Println("Returning without compression")
+				return
+			}
+			writer.Close()
 			http_response.Headers["Content-Encoding"] = "gzip"
+			http_response.Headers["Content-Length"] = fmt.Sprintf("%d", w.Len())
+			http_response.Body = w.String()
 		}
 	default:
 		{
