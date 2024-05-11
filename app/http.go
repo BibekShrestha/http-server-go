@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"strings"
 )
 
@@ -161,8 +162,13 @@ func compressionMiddleWare(cxt context.Context, http_request httpRequest, http_r
 		return
 	}
 	var compression string = http_request.Headers["accept-encoding"]
-	switch compression {
-	case "gzip":
+	accepted_compression := strings.Split(compression, ",")
+	for i := range accepted_compression {
+		accepted_compression[i] = strings.TrimSpace(accepted_compression[i])
+	}
+
+	switch {
+	case slices.Contains(accepted_compression, "gzip"):
 		{
 			http_response.Headers["Content-Encoding"] = "gzip"
 		}
