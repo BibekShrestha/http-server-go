@@ -59,7 +59,7 @@ func main() {
 }
 
 func handleConnection(conn net.Conn) {
-
+	defer conn.Close()
 	http_request := httpRequest{}
 	err := parse_request(conn, &http_request)
 	if err != nil {
@@ -86,7 +86,7 @@ func parse_request(conn net.Conn, request *httpRequest) error {
 		n, err := conn.Read(temp_buff)
 		fmt.Println("Read ", n, "Bytes")
 		if err != nil {
-			fmt.Println("Error when reading request; err")
+			fmt.Println("Error when reading request;", err)
 		}
 		request_bytes = append(request_bytes, temp_buff...)
 		if n < BUF_SIZE {
@@ -117,26 +117,48 @@ func parse_request(conn net.Conn, request *httpRequest) error {
 
 func prepareResponse(http_request httpRequest, http_response *httpResponse) {
 	http_response.Version = HTTPVersion
-	if http_request.Path == "/" {
-		http_response.StatusCode = "200"
-		http_response.Reason = "OK"
-	} else {
-		http_response.StatusCode = "404"
-		http_response.Reason = "Not Found"
-		http_response.Version = HTTPVersion
+
+	http_response.Headers = make(map[string]string)
+
+	switch {
+	case http_request.Path == "/":
+		{
+			http_response.StatusCode = "200"
+			http_response.Reason = "OK"
+		}
+	case strings.HasPrefix(http_request.Path, "/echo/"):
+		{
+			prepareEchoResponse(http_request, http_response)
+		}
+	default:
+		{
+			http_response.StatusCode = "404"
+			http_response.Reason = "Not Found"
+			http_response.Version = HTTPVersion
+		}
+
 	}
+
+}
+func prepareEchoResponse(http_request httpRequest, http_response *httpResponse) {
+	http_response.StatusCode = "200"
+	http_response.Reason = "OK"
+
+	splitted_path := strings.Split(http_request.Path, "/")
+	http_response.Body = splitted_path[len(splitted_path)-1]
+	http_response.Headers["Content-Type"] = "text/plain"
+	http_response.Headers["Content-Length"] = fmt.Sprintf("%d", len(http_response.Body))
+
 }
 
 func send_response(conn net.Conn, response httpResponse) error {
 
 	status_line := fmt.Sprintf("%s %s %s", HTTPVersion, response.StatusCode, response.Reason) + HTTP_EOL
 	header_line := ""
-	if len(response.Headers) == 0 {
-		header_line = HTTP_EOL
-	}
 	for k, v := range response.Headers {
 		header_line = header_line + k + ": " + v + HTTP_EOL
 	}
+	header_line += HTTP_EOL
 	http_response_string := status_line + header_line + response.Body
 
 	fmt.Println("Writing response: ", http_response_string)
