@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -35,8 +36,10 @@ type httpResponse struct {
 	Body       string
 }
 
-func handleConnection(conn net.Conn) {
+func handleConnection(cxt context.Context, conn net.Conn) {
+
 	defer conn.Close()
+
 	http_request := httpRequest{}
 	err := parse_request(conn, &http_request)
 	if err != nil {
@@ -44,7 +47,7 @@ func handleConnection(conn net.Conn) {
 	}
 
 	response := httpResponse{}
-	prepareResponse(http_request, &response)
+	prepareResponse(cxt, http_request, &response)
 
 	err = send_response(conn, response)
 	if err != nil {
@@ -92,7 +95,7 @@ func parse_request(conn net.Conn, request *httpRequest) error {
 	return nil
 }
 
-func prepareResponse(http_request httpRequest, http_response *httpResponse) {
+func prepareResponse(cxt context.Context, http_request httpRequest, http_response *httpResponse) {
 	http_response.Version = HTTPVersion
 
 	http_response.Headers = make(map[string]string)
@@ -100,19 +103,24 @@ func prepareResponse(http_request httpRequest, http_response *httpResponse) {
 	switch {
 	case http_request.Path == "/":
 		{
-			prepareRootResponse(http_request, http_response)
+			prepareRootResponse(cxt, http_request, http_response)
 		}
 	case strings.HasPrefix(http_request.Path, "/echo/"):
 		{
-			prepareEchoResponse(http_request, http_response)
+			prepareEchoResponse(cxt, http_request, http_response)
 		}
 	case http_request.Path == "/user-agent":
 		{
-			prepareUserAgentEndpoint(http_request, http_response)
+			prepareUserAgentEndpointResponse(cxt, http_request, http_response)
+		}
+	case strings.HasPrefix(http_request.Path, "/files/"):
+		{
+			fmt.Println("file request")
+			prepareFileResponse(cxt, http_request, http_response)
 		}
 	default:
 		{
-			prepareUnknownResponse(http_request, http_response)
+			prepareUnknownResponse(cxt, http_request, http_response)
 		}
 
 	}
