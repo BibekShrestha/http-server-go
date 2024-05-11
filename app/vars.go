@@ -1,8 +1,6 @@
 package main
 
 var (
-	HTTPVersion  = "HTTP/1.1"
-	EOL          = "\r\n"
-	STATUS_OK    = "OK"
-	Response_200 = "200"
+	HTTPVersion = "HTTP/1.1"
+	HTTP_EOL    = "\r\n"
 )
