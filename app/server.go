@@ -107,7 +107,7 @@ func parse_request(conn net.Conn, request *httpRequest) error {
 	for i := range http_headers {
 		splitted_header := strings.SplitN(http_headers[i], ":", 2)
 		if len(splitted_header) == 2 {
-			http_headers_map[splitted_header[0]] = splitted_header[1]
+			http_headers_map[strings.ToLower(splitted_header[0])] = strings.Trim(splitted_header[1], " ")
 		}
 	}
 	request.Headers = http_headers_map
@@ -130,6 +130,10 @@ func prepareResponse(http_request httpRequest, http_response *httpResponse) {
 		{
 			prepareEchoResponse(http_request, http_response)
 		}
+	case http_request.Path == "/user-agent":
+		{
+			prepareUserAgentEndpoint(http_request, http_response)
+		}
 	default:
 		{
 			http_response.StatusCode = "404"
@@ -140,17 +144,6 @@ func prepareResponse(http_request httpRequest, http_response *httpResponse) {
 	}
 
 }
-func prepareEchoResponse(http_request httpRequest, http_response *httpResponse) {
-	http_response.StatusCode = "200"
-	http_response.Reason = "OK"
-
-	splitted_path := strings.Split(http_request.Path, "/")
-	http_response.Body = splitted_path[len(splitted_path)-1]
-	http_response.Headers["Content-Type"] = "text/plain"
-	http_response.Headers["Content-Length"] = fmt.Sprintf("%d", len(http_response.Body))
-
-}
-
 func send_response(conn net.Conn, response httpResponse) error {
 
 	status_line := fmt.Sprintf("%s %s %s", HTTPVersion, response.StatusCode, response.Reason) + HTTP_EOL
@@ -169,4 +162,31 @@ func send_response(conn net.Conn, response httpResponse) error {
 		return err
 	}
 	return nil
+}
+
+func prepareEchoResponse(http_request httpRequest, http_response *httpResponse) {
+	http_response.StatusCode = "200"
+	http_response.Reason = "OK"
+
+	splitted_path := strings.Split(http_request.Path, "/")
+	http_response.Body = splitted_path[len(splitted_path)-1]
+	http_response.Headers["Content-Type"] = "text/plain"
+	http_response.Headers["Content-Length"] = fmt.Sprintf("%d", len(http_response.Body))
+
+}
+
+func prepareUserAgentEndpoint(http_request httpRequest, http_response *httpResponse) {
+
+	if _, ok := http_request.Headers["user-agent"]; !ok {
+		http_response.StatusCode = "400"
+		http_response.Reason = "Bad Request"
+		return
+	}
+
+	http_response.StatusCode = "200"
+	http_response.Reason = "OK"
+
+	http_response.Body = http_request.Headers["user-agent"]
+	http_response.Headers["Content-Type"] = "text/plain"
+	http_response.Headers["Content-Length"] = fmt.Sprintf("%d", len(http_response.Body))
 }
